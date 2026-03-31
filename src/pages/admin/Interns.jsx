@@ -69,13 +69,17 @@ export default function AdminInterns() {
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
+    const tid = toast.loading(`Deleting ${deleteTarget.full_name}…`)
     try {
       // Step 1 — delete all their logs
       const { error: logsErr } = await supabase
         .from('daily_logs')
         .delete()
         .eq('intern_id', deleteTarget.id)
-      if (logsErr) throw logsErr
+      if (logsErr) {
+        toast.error(`Step 1 failed (logs): ${logsErr.message}`, { id: tid })
+        throw logsErr
+      }
 
       // Step 2 — delete the users row (.select() catches silent RLS blocks)
       const { data: deleted, error: userErr } = await supabase
@@ -83,31 +87,35 @@ export default function AdminInterns() {
         .delete()
         .eq('id', deleteTarget.id)
         .select()
-      if (userErr) throw userErr
-
+      if (userErr) {
+        toast.error(`Step 2 failed (user row): ${userErr.message}`, { id: tid })
+        throw userErr
+      }
       if (!deleted || deleted.length === 0) {
-        throw new Error(
-          'Delete blocked by database policy. Run DELETE RLS policies in Supabase SQL Editor.'
-        )
+        toast.error('Step 2 failed: RLS blocked delete. Run DELETE policy SQL in Supabase.', { id: tid })
+        throw new Error('Delete blocked by RLS')
       }
 
-      // Step 3 — delete from auth.users via Edge Function (service role key)
-      const { error: fnErr } = await supabase.functions.invoke('delete-user', {
+      // Step 3 — delete from auth.users via Edge Function
+      const { error: fnErr, data: fnData } = await supabase.functions.invoke('delete-user', {
         body: { userId: deleteTarget.id },
       })
-      if (fnErr) {
-        // DB is already clean — just warn, don't block success
-        console.warn('Auth user deletion failed (Edge Function):', fnErr.message)
-        toast.success(`${deleteTarget.full_name} removed. (Auth entry may need manual cleanup)`)
+      if (fnErr || fnData?.error) {
+        const msg = fnErr?.message || fnData?.error
+        console.warn('Auth deletion warning:', msg)
+        // DB is clean — show partial success
+        toast.success(`${deleteTarget.full_name} removed from app. Auth error: ${msg}`, { id: tid, duration: 6000 })
       } else {
-        toast.success(`${deleteTarget.full_name} permanently deleted.`)
+        toast.success(`${deleteTarget.full_name} permanently deleted.`, { id: tid })
       }
 
       setInterns(prev => prev.filter(i => i.id !== deleteTarget.id))
       setDeleteTarget(null)
     } catch (err) {
-      console.error(err)
-      toast.error(err.message || 'Delete failed.')
+      console.error('Delete error:', err)
+      if (!err.message?.includes('RLS')) {
+        toast.error(err.message || 'Delete failed.', { id: tid })
+      }
     } finally {
       setDeleting(false)
     }

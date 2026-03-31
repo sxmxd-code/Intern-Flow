@@ -18,22 +18,26 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing Authorization header')
 
-    // ── 1. Verify the CALLER is admin or dept_head ──
-    // Use their JWT to check role from public.users
+    // ── 1. Get caller's identity from their JWT ──
     const supabaseUser = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       { global: { headers: { Authorization: authHeader } } }
     )
 
+    const { data: { user: caller }, error: authErr } = await supabaseUser.auth.getUser()
+    if (authErr || !caller) throw new Error('Unauthorized — invalid token')
+
+    // ── 2. Verify caller role is admin or dept_head ──
     const { data: profile, error: profileErr } = await supabaseUser
       .from('users')
       .select('role')
+      .eq('id', caller.id)   // <-- MUST scope to caller's own row
       .single()
 
-    if (profileErr || !profile) throw new Error('Unauthorized')
+    if (profileErr || !profile) throw new Error('Unauthorized — profile not found')
     if (!['admin', 'dept_head'].includes(profile.role)) {
-      throw new Error('Insufficient permissions — admin or dept_head required')
+      throw new Error('Insufficient permissions')
     }
 
     // ── 2. Get the target userId from request body ──
