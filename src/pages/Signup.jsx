@@ -76,6 +76,10 @@ export default function Signup() {
 
       if (dbError) throw dbError
 
+      // Sign out immediately — user must log in explicitly.
+      // This prevents auto-login bypass since email confirmation is disabled.
+      await supabase.auth.signOut()
+
       setShowSuccess(true)
     } catch (err) {
       setError(err.message || 'Failed to sign up')

@@ -43,8 +43,12 @@ export function AuthProvider({ children }) {
 
       if (error) throw error
 
-      setRole(data?.role   || 'pending')
-      setStatus(data?.status || 'pending')
+      // If status is null/empty (column might not be populated), treat as pending
+      const fetchedStatus = data?.status || 'pending'
+      const fetchedRole   = data?.role   || 'intern'
+
+      setRole(fetchedRole)
+      setStatus(fetchedStatus)
     } catch (err) {
       console.error('Error fetching profile:', err)
       setRole('intern')
