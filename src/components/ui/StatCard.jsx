@@ -1,19 +1,24 @@
 import React from 'react'
 import GlassCard from './GlassCard'
 
-export default function StatCard({ icon: Icon, label, value, sublabel, iconColor = "text-primary-600", iconBg = "bg-primary-50" }) {
+export default function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+  iconColor = 'text-indigo-600',
+  iconBg    = 'bg-indigo-50',
+}) {
   return (
-    <GlassCard>
+    <GlassCard hoverLift={false}>
       <div className="flex items-start gap-4">
-        <div className={`p-3 rounded-xl ${iconBg} ${iconColor}`}>
-          <Icon className="w-6 h-6" />
+        <div className={`p-2.5 rounded-xl flex-shrink-0 ${iconBg}`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
         </div>
-        <div>
-          <p className="text-sm font-medium text-gray-500 mb-1">{label}</p>
-          <h3 className="text-2xl font-bold text-gray-900">{value}</h3>
-          {sublabel && (
-            <p className="text-sm text-gray-500 mt-1">{sublabel}</p>
-          )}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider truncate">{label}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1 truncate">{value}</p>
+          {sublabel && <p className="text-xs text-gray-400 mt-1 truncate">{sublabel}</p>}
         </div>
       </div>
     </GlassCard>

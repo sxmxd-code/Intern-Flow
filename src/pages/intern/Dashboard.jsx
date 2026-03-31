@@ -1,252 +1,320 @@
-import React, { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Flame, Clock, BarChart2, FileText, ArrowRight } from 'lucide-react'
-import { format, startOfWeek, endOfWeek, parseISO } from 'date-fns'
-import { useAuth } from '../../context/AuthContext'
+import React, { useState, useEffect, useCallback } from 'react'
+import { FileText, Plus, Clock, TrendingUp, CheckCircle, Calendar, X, ChevronRight, Zap } from 'lucide-react'
+import { format, isToday, parseISO } from 'date-fns'
 import { supabase } from '../../lib/supabase'
-import { useStreak } from '../../hooks/useStreak'
-import PageHeader from '../../components/layout/PageHeader'
-import GlassCard from '../../components/ui/GlassCard'
+import { useAuth } from '../../context/AuthContext'
+import { Link } from 'react-router-dom'
 import StatCard from '../../components/ui/StatCard'
+import GlassCard from '../../components/ui/GlassCard'
 import LoadingSpinner from '../../components/ui/LoadingSpinner'
-import HeatmapGrid from '../../components/charts/HeatmapGrid'
-import MoodTrendChart from '../../components/charts/MoodTrendChart'
-import MoodBadge from '../../components/ui/MoodBadge'
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { streak, loading: streakLoading } = useStreak(user?.id)
-
   const [loading, setLoading] = useState(true)
-  const [logs, setLogs] = useState([])
-  const [loggedToday, setLoggedToday] = useState(false)
-  const [stats, setStats] = useState({
-    hoursThisWeek: 0,
-    avgScoreThisWeek: 0,
-    totalLogs: 0
-  })
+  const [stats, setStats] = useState({ totalLogs: 0, avgScore: 0, loggedToday: false, streak: 0 })
+  const [recentLogs, setRecentLogs] = useState([])
+  const [selectedReport, setSelectedReport] = useState(null)
 
-  // Determine greeting based on time
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
-
-  useEffect(() => {
+  const fetchDashboardData = useCallback(async () => {
     if (!user) return
-
-    const fetchDashboardData = async () => {
-      try {
-        const todayStr = format(new Date(), 'yyyy-MM-dd')
-        const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-        const weekEnd = format(endOfWeek(new Date(), { weekStartsOn: 1 }), 'yyyy-MM-dd')
-
-        // Fetch all logs
-        const { data: allLogs, error: logError } = await supabase
+    try {
+      const [{ data: logs, error: logsError }, { count, error: countError }] = await Promise.all([
+        supabase
           .from('daily_logs')
-          .select('*, projects(name)')
+          .select('id, log_date, tasks_completed, hours_worked, blockers, mood, productivity_score, admin_feedback, projects(name)')
           .eq('intern_id', user.id)
           .order('log_date', { ascending: false })
+          .limit(10),
+        supabase
+          .from('daily_logs')
+          .select('*', { count: 'exact', head: true })
+          .eq('intern_id', user.id),
+      ])
+      if (logsError) throw logsError
+      if (countError) throw countError
 
-        if (logError) throw logError
+      const allLogs = logs || []
+      const loggedToday = allLogs.some(l => isToday(parseISO(l.log_date)))
+      const avgScore = allLogs.length > 0
+        ? (allLogs.reduce((a, l) => a + (Number(l.productivity_score) || 0), 0) / allLogs.length).toFixed(1)
+        : 0
 
-        setLogs(allLogs || [])
-
-        // Calculate stats
-        let weekHours = 0
-        let weekScoreTotal = 0
-        let weekLogCount = 0
-
-        const isLoggedToday = allLogs.some(log => log.log_date === todayStr)
-        setLoggedToday(isLoggedToday)
-
-        allLogs.forEach(log => {
-          if (log.log_date >= weekStart && log.log_date <= weekEnd) {
-            weekHours += Number(log.hours_worked) || 0
-            
-            if (log.productivity_score != null) {
-              weekScoreTotal += Number(log.productivity_score)
-              weekLogCount++
-            }
-          }
-        })
-
-        const avgScore = weekLogCount > 0 ? (weekScoreTotal / weekLogCount).toFixed(1) : 0
-
-        setStats({
-          hoursThisWeek: weekHours,
-          avgScoreThisWeek: avgScore,
-          totalLogs: allLogs.length
-        })
-
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error)
-      } finally {
-        setLoading(false)
+      // Simple streak calculation
+      let streak = 0
+      const today = new Date()
+      for (let i = 0; i < allLogs.length; i++) {
+        const logDate = parseISO(allLogs[i].log_date)
+        const daysAgo = Math.floor((today - logDate) / 86400000)
+        if (daysAgo === i) streak++
+        else break
       }
-    }
 
-    fetchDashboardData()
+      setStats({ totalLogs: count || 0, avgScore, loggedToday, streak })
+      setRecentLogs(allLogs.slice(0, 5))
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
   }, [user])
 
-  if (loading || streakLoading) return <LoadingSpinner />
+  useEffect(() => { fetchDashboardData() }, [fetchDashboardData])
 
-  const recentLogs = logs.slice(0, 5) // Last 5
-  // Get logs from last 14 days for mood trend
-  const fourteenDaysAgoStr = format(new Date(new Date().setDate(new Date().getDate() - 14)), 'yyyy-MM-dd')
-  const moodData = logs.filter(log => log.log_date >= fourteenDaysAgoStr)
+  if (loading) return <LoadingSpinner />
+
+  const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'there'
+  const todayFormatted = format(new Date(), 'EEEE, MMMM d')
+
+  const getMoodEmoji = mood => ({ great: '😄', good: '🙂', okay: '😐', struggling: '😟' }[mood] || '🙂')
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      <PageHeader 
-        title={`${greeting}, ${user?.user_metadata?.full_name?.split(' ')[0] || 'Intern'} 👋`}
-        description="Here's what your productivity looks like today."
-      >
-        <Link 
-          to="/log"
-          className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium shadow-md hover:bg-primary-700 hover:shadow-lg transition-all text-sm flex items-center gap-2"
-        >
-          <FileText className="w-4 h-4" /> Log Current Work
-        </Link>
-      </PageHeader>
+    <div className="space-y-5 pb-10 animate-fade-in">
 
-      {/* Banner */}
-      {loggedToday ? (
-        <div className="bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-slide-up">
-          <div className="flex items-center gap-3">
-            <div className="bg-green-100 p-2 rounded-full shrink-0">
-              ✅
-            </div>
-            <p className="font-medium text-sm sm:text-base">You've logged your work today. Keep it up!</p>
-          </div>
-          <Link to="/log" className="text-sm font-semibold text-green-700 hover:underline shrink-0">View / Edit Today's Log</Link>
-        </div>
-      ) : (
-        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-6 py-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-slide-up">
-          <div className="flex items-center gap-3">
-            <div className="bg-yellow-100 p-2 rounded-full shrink-0">
-              ⚠️
-            </div>
-            <p className="font-medium text-sm sm:text-base">Don't forget to log your work today before you sign off.</p>
-          </div>
-          <Link to="/log" className="text-sm font-semibold text-yellow-700 hover:underline shrink-0">Log Now &rarr;</Link>
-        </div>
-      )}
+      {/* ── Hero Header ── */}
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-2xl p-5 sm:p-6 text-white">
+        <p className="text-indigo-200 text-xs font-semibold uppercase tracking-widest mb-1">{todayFormatted}</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-4">
+          Hey, {firstName} 👋
+        </h1>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 content-start">
-        <StatCard 
-          icon={Flame} 
-          label="Current Streak" 
-          value={streak > 0 ? `${streak} Days` : '0 Days'} 
-          sublabel={streak > 0 ? "You're on fire!" : "Start your streak today!"}
-          iconColor="text-orange-600"
-          iconBg="bg-orange-50"
-        />
-        <StatCard 
-          icon={Clock} 
-          label="Hours This Week" 
-          value={`${stats.hoursThisWeek}h`}
-          sublabel="Mon - Sun"
-          iconColor="text-blue-600"
-          iconBg="bg-blue-50"
-        />
-        <StatCard 
-          icon={BarChart2} 
-          label="Avg Score This Week" 
-          value={`${stats.avgScoreThisWeek} / 10.0`}
+        {stats.loggedToday ? (
+          <div className="flex items-center gap-2 bg-white/20 rounded-xl px-4 py-2.5 text-sm font-semibold w-fit">
+            <CheckCircle size={16} className="text-green-300" />
+            <span>You've logged for today!</span>
+          </div>
+        ) : (
+          <Link
+            to="/log"
+            className="inline-flex items-center gap-2 bg-white text-indigo-700 font-bold text-sm rounded-xl px-4 py-2.5 hover:bg-indigo-50 active:scale-95 transition-all"
+          >
+            <Plus size={16} /> Post Today's Update
+          </Link>
+        )}
+      </div>
+
+      {/* ── Stat Cards ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard
+          icon={FileText}
+          label="Total Logs"
+          value={stats.totalLogs}
+          sublabel="All time"
           iconColor="text-indigo-600"
           iconBg="bg-indigo-50"
         />
-        <StatCard 
-          icon={FileText} 
-          label="Total Logs" 
-          value={stats.totalLogs}
-          sublabel="All time"
+        <StatCard
+          icon={TrendingUp}
+          label="Avg Score"
+          value={`${stats.avgScore}/10`}
+          sublabel="Productivity"
           iconColor="text-emerald-600"
           iconBg="bg-emerald-50"
         />
+        <StatCard
+          icon={Zap}
+          label="Streak"
+          value={`${stats.streak}d`}
+          sublabel={stats.streak > 0 ? 'Keep it up!' : 'Start today'}
+          iconColor="text-orange-500"
+          iconBg="bg-orange-50"
+        />
+        <StatCard
+          icon={Calendar}
+          label="Today"
+          value={stats.loggedToday ? 'Logged ✓' : 'Pending'}
+          sublabel={stats.loggedToday ? 'Great job!' : 'Log now'}
+          iconColor={stats.loggedToday ? 'text-green-600' : 'text-amber-500'}
+          iconBg={stats.loggedToday ? 'bg-green-50' : 'bg-amber-50'}
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Heatmap Grid */}
-        <GlassCard className="lg:col-span-1 border border-primary-100 min-h-[300px] flex flex-col justify-between" hoverLift={false}>
-          <div>
-            <h3 className="text-lg font-bold font-heading text-gray-900 mb-1">Consistency Tracker</h3>
-            <p className="text-sm text-gray-500 mb-6">Last 5 weeks activity</p>
+      {/* ── Quick Action ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          to="/log"
+          className="flex items-center justify-between p-4 bg-white rounded-2xl border border-indigo-100 hover:border-indigo-300 hover:shadow-sm transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
+              <Plus size={20} className="text-indigo-600" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Post Update</p>
+              <p className="text-xs text-gray-400">Log your work for today</p>
+            </div>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-             <HeatmapGrid logs={logs} />
-          </div>
-        </GlassCard>
+          <ChevronRight size={18} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+        </Link>
 
-        {/* Mood Trend */}
-        <GlassCard className="lg:col-span-2 border border-primary-100 min-h-[300px] flex flex-col justify-between" hoverLift={false}>
-          <div>
-            <h3 className="text-lg font-bold font-heading text-gray-900 mb-1">Mood Trend</h3>
-            <p className="text-sm text-gray-500 mb-4">Last 14 days</p>
+        <Link
+          to="/my-logs"
+          className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center">
+              <Clock size={20} className="text-gray-500" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">View All Logs</p>
+              <p className="text-xs text-gray-400">Full history & filters</p>
+            </div>
           </div>
-          <div className="flex-1 flex flex-col items-center justify-end">
-            <MoodTrendChart data={moodData} />
-          </div>
-        </GlassCard>
+          <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-500 transition-colors" />
+        </Link>
       </div>
 
-      {/* Recent Logs Table */}
-      <GlassCard className="overflow-hidden p-0 border border-primary-100" hoverLift={false}>
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-          <h3 className="text-lg font-bold font-heading text-gray-900">Recent Logs</h3>
-          <Link to="/my-logs" className="text-sm font-semibold text-primary-600 flex items-center gap-1 hover:text-primary-700">
-            View All <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50/50 text-gray-600 font-medium">
-              <tr>
-                <th className="px-6 py-4">Date</th>
-                <th className="px-6 py-4">Project</th>
-                <th className="px-6 py-4">Tasks</th>
-                <th className="px-6 py-4">Hours</th>
-                <th className="px-6 py-4">Mood</th>
-                <th className="px-6 py-4">Score</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {recentLogs.length > 0 ? (
-                recentLogs.map(log => (
-                  <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-medium">
-                      {format(parseISO(log.log_date), 'MMM d, yyyy')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                      {log.projects?.name || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      <div className="truncate max-w-[200px]">
-                        {log.tasks_completed}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-                      {log.hours_worked}h
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <MoodBadge mood={log.mood} />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-primary-700 font-semibold">
-                      {log.productivity_score}
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                    No logs found. Start logging today!
-                  </td>
-                </tr>
+      {/* ── Recent Activity Feed ── */}
+      <div>
+        <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3">Recent Activity</h3>
+
+        {recentLogs.length > 0 ? (
+          <div className="space-y-2">
+            {recentLogs.map(log => (
+              <button
+                key={log.id}
+                onClick={() => setSelectedReport(log)}
+                className="w-full text-left bg-white rounded-2xl border border-gray-100 hover:border-indigo-100 hover:shadow-sm active:scale-[0.995] transition-all p-4"
+              >
+                <div className="flex items-center gap-3">
+                  {/* Mood / date column */}
+                  <div className="flex-shrink-0 text-center w-10">
+                    <span className="text-xl">{getMoodEmoji(log.mood)}</span>
+                    <p className="text-[9px] text-gray-400 font-bold mt-0.5 leading-none">
+                      {format(parseISO(log.log_date), 'MMM d')}
+                    </p>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <span className="text-sm font-bold text-gray-900">
+                        {log.projects?.name || 'General'}
+                      </span>
+                      {isToday(parseISO(log.log_date)) && (
+                        <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] font-black uppercase rounded">Today</span>
+                      )}
+                      {log.blockers?.trim() && (
+                        <span className="px-1.5 py-0.5 bg-red-100 text-red-600 text-[9px] font-black uppercase rounded">Blocker</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 line-clamp-1">{log.tasks_completed || 'No details.'}</p>
+                  </div>
+
+                  {/* Score */}
+                  <div className="flex-shrink-0 text-right">
+                    <span className={`text-xs font-black ${Number(log.productivity_score) >= 7 ? 'text-green-600' :
+                      Number(log.productivity_score) >= 4 ? 'text-amber-600' : 'text-red-500'
+                      }`}>{log.productivity_score}/10</span>
+                    <p className="text-[9px] text-gray-300">{log.hours_worked}h</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+            <p className="text-3xl mb-2">📋</p>
+            <p className="text-gray-400 text-sm font-semibold">No logs yet</p>
+            <Link to="/log" className="inline-block mt-2 text-xs text-indigo-600 font-bold">
+              Post your first update →
+            </Link>
+          </div>
+        )}
+      </div>
+
+      {/* ── Log Detail Bottom Sheet ── */}
+      {selectedReport && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/0"
+          onClick={() => setSelectedReport(null)}
+        >
+          <div
+            className="bg-white w-full sm:max-w-lg sm:rounded-2xl shadow-2xl flex flex-col max-h-[85vh] rounded-t-2xl animate-slide-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-start justify-between px-5 py-3">
+              <div>
+                <p className="font-black text-gray-900 text-base">
+                  {format(parseISO(selectedReport.log_date), 'EEEE, MMMM d')}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {selectedReport.projects?.name || 'No project'} · {selectedReport.hours_worked}h worked
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="p-2 hover:bg-gray-100 rounded-xl text-gray-400"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="overflow-y-auto flex-1 px-5 pb-5 space-y-4">
+              {/* Meta row */}
+              <div className="flex gap-2 flex-wrap">
+                <div className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-bold">
+                  {getMoodEmoji(selectedReport.mood)} {selectedReport.mood}
+                </div>
+                <div className={`px-3 py-1.5 rounded-xl text-xs font-bold ${Number(selectedReport.productivity_score) >= 7 ? 'bg-green-50 text-green-700' :
+                  Number(selectedReport.productivity_score) >= 4 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'
+                  }`}>
+                  Score: {selectedReport.productivity_score}/10
+                </div>
+                <div className="bg-gray-100 text-gray-600 px-3 py-1.5 rounded-xl text-xs font-bold">
+                  {selectedReport.hours_worked}h
+                </div>
+              </div>
+
+              {/* Tasks */}
+              <div>
+                <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">What I did</p>
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                  <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    {selectedReport.tasks_completed || 'No description provided.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Blockers */}
+              {selectedReport.blockers?.trim() && (
+                <div>
+                  <p className="text-[10px] font-black uppercase text-red-500 tracking-widest mb-2">Blockers</p>
+                  <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+                    <p className="text-sm text-red-800 whitespace-pre-wrap">{selectedReport.blockers}</p>
+                  </div>
+                </div>
               )}
-            </tbody>
-          </table>
+
+              {/* Admin feedback */}
+              {selectedReport.admin_feedback && (
+                <div>
+                  <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest mb-2">Admin Reply</p>
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                    <p className="text-sm text-indigo-900 font-medium whitespace-pre-wrap">{selectedReport.admin_feedback}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-gray-100">
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
-      </GlassCard>
+      )}
     </div>
   )
 }

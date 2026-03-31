@@ -2,13 +2,13 @@ import React from 'react'
 
 export default function PageHeader({ title, description, children }) {
   return (
-    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 bg-white/40 p-6 rounded-2xl backdrop-blur-md border border-gray-100 shadow-sm">
-      <div>
-        <h1 className="text-3xl font-bold font-heading text-gray-900 mb-1">{title}</h1>
-        {description && <p className="text-gray-500 text-sm">{description}</p>}
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="min-w-0">
+        <h1 className="text-2xl sm:text-3xl font-bold font-heading text-gray-900 truncate">{title}</h1>
+        {description && <p className="text-sm text-gray-500 mt-0.5">{description}</p>}
       </div>
       {children && (
-        <div className="flex-shrink-0 w-full md:w-auto">
+        <div className="flex-shrink-0 w-full sm:w-auto">
           {children}
         </div>
       )}

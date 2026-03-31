@@ -4,10 +4,10 @@ import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/layout/ProtectedRoute'
 import Sidebar from './components/layout/Sidebar'
 
-// Pages Placeholder (will replace imports with real files once created)
 import Landing from './pages/Landing'
 import Login from './pages/Login'
 import Signup from './pages/Signup'
+import PendingApproval from './pages/PendingApproval'
 
 // Intern Pages
 import Dashboard from './pages/intern/Dashboard'
@@ -23,32 +23,31 @@ import AdminProjects from './pages/admin/Projects'
 import AssignInterns from './pages/admin/Assign'
 import ExportLogs from './pages/admin/Export'
 import AdminProfile from './pages/admin/Profile'
+import AdminRequests from './pages/admin/Requests'
 
+// App shell: sidebar + scrollable main
 function Layout() {
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-white relative overflow-hidden">
-      {/* Background blobs */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-primary-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob pointer-events-none -z-10"></div>
-      <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000 pointer-events-none -z-10"></div>
-      <div className="absolute -bottom-32 left-80 w-96 h-96 bg-blue-200/30 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000 pointer-events-none -z-10"></div>
-      
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       <Sidebar />
-      <div className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in z-0 relative">
-        <Outlet />
-      </div>
+      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+        {/*
+          pt-14 = mobile fixed navbar height (h-14 = 56px).
+          We use explicit pt instead of p shorthand to avoid
+          the shorthand overriding pt-14 based on CSS output order.
+        */}
+        <div className="pt-14 md:pt-6 lg:pt-8 px-4 sm:px-6 lg:px-8 pb-8 max-w-7xl mx-auto">
+          <Outlet />
+        </div>
+      </main>
     </div>
   )
 }
 
-function MainLayout() {
+// Auth / landing layout — no sidebar
+function PublicLayout() {
   return (
-    <div className="min-h-screen relative overflow-hidden bg-white">
-      {/* Background blobs for auth/landing pages */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none -z-10 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-300/20 rounded-full mix-blend-multiply filter blur-[100px] animate-blob"></div>
-        <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-indigo-300/20 rounded-full mix-blend-multiply filter blur-[120px] animate-blob" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-blue-400/20 rounded-full mix-blend-multiply filter blur-[150px] animate-blob" style={{ animationDelay: '4s' }}></div>
-      </div>
+    <div className="min-h-screen bg-gray-50">
       <Outlet />
     </div>
   )
@@ -59,45 +58,50 @@ export default function App() {
     <Router>
       <AuthProvider>
         <Routes>
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+          {/* Public routes */}
+          <Route element={<PublicLayout />}>
+            <Route path="/"        element={<Landing />} />
+            <Route path="/login"   element={<Login />} />
+            <Route path="/signup"  element={<Signup />} />
+            <Route path="/pending" element={<PendingApproval />} />
           </Route>
 
           {/* Intern Routes */}
           <Route element={<ProtectedRoute allowedRoles={['intern']} />}>
             <Route element={<Layout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/log" element={<LogToday />} />
-              <Route path="/my-logs" element={<MyLogs />} />
+              <Route path="/dashboard"   element={<Dashboard />} />
+              <Route path="/log"         element={<LogToday />} />
+              <Route path="/my-logs"     element={<MyLogs />} />
               <Route path="/my-projects" element={<MyProjects />} />
-              <Route path="/profile" element={<InternProfile />} />
+              <Route path="/profile"     element={<InternProfile />} />
             </Route>
           </Route>
 
-          {/* Admin Routes */}
-          <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+          {/* Admin + Staff + Dept Head Routes */}
+          <Route element={<ProtectedRoute allowedRoles={['admin', 'staff', 'dept_head']} />}>
             <Route element={<Layout />}>
-              <Route path="/admin" element={<AdminOverview />} />
-              <Route path="/admin/interns" element={<AdminInterns />} />
-              <Route path="/admin/projects" element={<AdminProjects />} />
-              <Route path="/admin/assign" element={<AssignInterns />} />
-              <Route path="/admin/export" element={<ExportLogs />} />
-              <Route path="/admin/profile" element={<AdminProfile />} />
+              <Route path="/admin"              element={<AdminOverview />} />
+              <Route path="/admin/interns"      element={<AdminInterns />} />
+              <Route path="/admin/projects"     element={<AdminProjects />} />
+              <Route path="/admin/assign"       element={<AssignInterns />} />
+              <Route path="/admin/export"       element={<ExportLogs />} />
+              <Route path="/admin/profile"      element={<AdminProfile />} />
+              <Route path="/admin/requests"     element={<AdminRequests />} />
             </Route>
           </Route>
         </Routes>
-        <Toaster 
-          position="top-right" 
+
+        <Toaster
+          position="top-center"
           toastOptions={{
             style: {
-              background: 'rgba(255, 255, 255, 0.9)',
-              backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.5)',
-              color: '#333',
-              boxShadow: '0 8px 32px rgba(31,38,135,0.08)'
-            }
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              color: '#111827',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+              fontSize: '14px',
+              maxWidth: '90vw',
+            },
           }}
         />
       </AuthProvider>

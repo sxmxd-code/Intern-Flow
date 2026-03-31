@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { format, parseISO, differenceInCalendarDays, startOfDay, subDays } from 'date-fns'
 import PageHeader from '../../components/layout/PageHeader'
@@ -13,222 +13,176 @@ export default function AdminInterns() {
   const [search, setSearch] = useState('')
   const [expandedRow, setExpandedRow] = useState(null)
 
-  useEffect(() => {
-    fetchInterns()
-  }, [])
+  useEffect(() => { fetchInterns() }, [])
 
   const fetchInterns = async () => {
     try {
-      // Fetch interns
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'intern')
-        .order('full_name', { ascending: true })
-      
+      const [{ data: usersData, error: usersError }, { data: logsData, error: logsError }] = await Promise.all([
+        supabase.from('users').select('*').eq('role', 'intern').order('full_name'),
+        supabase.from('daily_logs').select('*').order('log_date', { ascending: false }),
+      ])
       if (usersError) throw usersError
+      if (logsError)  throw logsError
 
-      // Fetch all logs
-      const { data: logsData, error: logsError } = await supabase
-        .from('daily_logs')
-        .select('*')
-        .order('log_date', { ascending: false })
-
-      if (logsError) throw logsError
-
-      // Process stats per intern
-      const processedInterns = usersData.map(intern => {
-        const internLogs = logsData.filter(l => l.intern_id === intern.id)
-        
-        // Calculate streak
-        let currentStreak = 0
+      const processedInterns = (usersData || []).map(intern => {
+        const internLogs = (logsData || []).filter(l => l.intern_id === intern.id)
+        let streak = 0
         if (internLogs.length > 0) {
           const dates = internLogs.map(d => startOfDay(parseISO(d.log_date)))
           const today = startOfDay(new Date())
           const yesterday = subDays(today, 1)
-          const latestLogDate = dates[0]
-          
-          if (latestLogDate.getTime() === today.getTime() || latestLogDate.getTime() === yesterday.getTime()) {
-            currentStreak = 1
-            let checkDate = latestLogDate
+          const latest = dates[0]
+          if (latest.getTime() === today.getTime() || latest.getTime() === yesterday.getTime()) {
+            streak = 1
+            let check = latest
             for (let i = 1; i < dates.length; i++) {
-              const nextDate = dates[i]
-              const diff = differenceInCalendarDays(checkDate, nextDate)
-              if (diff === 1) {
-                currentStreak++
-                checkDate = nextDate
-              } else if (diff === 0) {
-                // Same day, ignored
-              } else {
-                break
-              }
+              const diff = differenceInCalendarDays(check, dates[i])
+              if (diff === 1) { streak++; check = dates[i] }
+              else if (diff === 0) continue
+              else break
             }
           }
         }
-
-        // Avg Score overall
-        const avgScore = internLogs.length > 0 
-          ? (internLogs.reduce((acc, l) => acc + Number(l.productivity_score), 0) / internLogs.length).toFixed(1) 
-          : 0
-
-        const lastLogDate = internLogs.length > 0 ? internLogs[0].log_date : null
-        
-        // Status: Active if logged in last 7 days
+        const avgScore = internLogs.length > 0
+          ? (internLogs.reduce((a, l) => a + Number(l.productivity_score), 0) / internLogs.length).toFixed(1) : 0
+        const lastLogDate = internLogs[0]?.log_date || null
         const isActive = lastLogDate && differenceInCalendarDays(new Date(), parseISO(lastLogDate)) <= 7
-
-        return {
-          ...intern,
-          streak: currentStreak,
-          avgScore,
-          lastLogDate,
-          recentLogs: internLogs.slice(0, 5),
-          isActive
-        }
+        return { ...intern, streak, avgScore, lastLogDate, recentLogs: internLogs.slice(0, 5), isActive }
       })
-
       setInterns(processedInterns)
     } catch (error) {
-      console.error('Error fetching interns:', error)
+      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  const toggleRow = (id) => {
-    setExpandedRow(expandedRow === id ? null : id)
-  }
-
   if (loading) return <LoadingSpinner />
 
-  const filteredInterns = interns.filter(i => 
+  const filtered = interns.filter(i =>
     i.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     i.email?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
-    <div className="max-w-7xl mx-auto pb-12 space-y-8 animate-fade-in">
-      <PageHeader 
-        title="Interns Directory" 
-        description="View all interns, their stats, and recent activity" 
-      />
+    <div className="space-y-5 pb-10 animate-fade-in">
+      <PageHeader title="Interns" description="View all interns and their recent activity" />
 
-      <GlassCard className="p-4 border border-gray-200" hoverLift={false}>
-        <div className="relative max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-            <Search className="h-5 w-5" />
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by name or email..."
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:ring-2 focus:ring-indigo-400 outline-none"
+        />
+      </div>
+
+      {/* Intern cards — card layout instead of table for mobile */}
+      <div className="space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 text-sm bg-white rounded-2xl border border-gray-100">
+            No interns found{search && ` for "${search}"`}.
           </div>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 w-full rounded-xl border border-gray-200 bg-white/50 focus:bg-white p-3 text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none"
-            placeholder="Search internals by name or email..."
-          />
-        </div>
-      </GlassCard>
-
-      <GlassCard className="overflow-hidden p-0 border border-gray-200" hoverLift={false}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50/50 text-gray-600 font-medium border-b border-gray-100">
-              <tr>
-                <th className="px-6 py-4">Name</th>
-                <th className="px-6 py-4">Email</th>
-                <th className="px-6 py-4">Streak</th>
-                <th className="px-6 py-4">Avg Score</th>
-                <th className="px-6 py-4">Last Log</th>
-                <th className="px-6 py-4">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filteredInterns.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
-                    No interns found matching "{search}"
-                  </td>
-                </tr>
-              ) : (
-                filteredInterns.map((intern) => {
-                  const isExpanded = expandedRow === intern.id
-                  return (
-                    <React.Fragment key={intern.id}>
-                      <tr 
-                        className="hover:bg-primary-50/30 transition-colors cursor-pointer group"
-                        onClick={() => toggleRow(intern.id)}
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-900 font-bold flex items-center justify-between">
-                          {intern.full_name}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {intern.email}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-orange-600">
-                          {intern.streak > 0 ? `🔥 ${intern.streak}` : '0'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-primary-700 font-semibold">
-                          {intern.avgScore}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
-                          {intern.lastLogDate ? format(parseISO(intern.lastLogDate), 'MMM d, yyyy') : 'Never'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap flex justify-between items-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                            intern.isActive ? 'bg-green-100 text-green-800 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'
-                          } border shadow-sm`}>
-                            {intern.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                          <span className="text-gray-400 group-hover:text-primary-600">
-                            {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                          </span>
-                        </td>
-                      </tr>
-
-                      {/* Expanded View */}
-                      {isExpanded && (
-                        <tr className="bg-gray-50/50 shadow-inner">
-                          <td colSpan="6" className="px-8 py-6">
-                            <h4 className="font-bold font-heading text-gray-900 mb-4 border-b pb-2 border-gray-200">Recent Logs (Last 5)</h4>
-                            {intern.recentLogs.length === 0 ? (
-                              <p className="text-gray-500 text-sm">This intern hasn't submitted any logs yet.</p>
-                            ) : (
-                              <div className="grid gap-3">
-                                {intern.recentLogs.map(log => (
-                                  <div key={log.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex items-center justify-between">
-                                    <div className="flex flex-col gap-1 w-1/4">
-                                      <span className="text-xs font-medium text-gray-500">Date</span>
-                                      <span className="font-semibold text-gray-900">{format(parseISO(log.log_date), 'MMM d, yyyy')}</span>
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-1/4">
-                                      <span className="text-xs font-medium text-gray-500">Hours</span>
-                                      <span className="font-semibold text-gray-900">{log.hours_worked}h</span>
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-1/4">
-                                      <span className="text-xs font-medium text-gray-500">Score</span>
-                                      <span className="font-semibold text-primary-600 flex items-center gap-1">{log.productivity_score} <MoodBadge mood={log.mood} /></span>
-                                    </div>
-                                    <div className="flex flex-col gap-1 w-1/4">
-                                      <span className="text-xs font-medium text-gray-500">Blockers</span>
-                                      {log.blockers ? (
-                                        <span className="text-sm text-red-600 truncate max-w-[150px]" title={log.blockers}>{log.blockers}</span>
-                                      ) : (
-                                        <span className="text-sm text-green-600">None</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </td>
-                        </tr>
+        ) : (
+          filtered.map(intern => {
+            const isExpanded = expandedRow === intern.id
+            return (
+              <GlassCard key={intern.id} hoverLift={false}>
+                {/* Intern summary row */}
+                <button
+                  onClick={() => setExpandedRow(isExpanded ? null : intern.id)}
+                  className="w-full text-left"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center flex-shrink-0">
+                        {intern.full_name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-gray-900 text-sm truncate">{intern.full_name}</p>
+                        <p className="text-xs text-gray-400 truncate">{intern.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${intern.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {intern.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                      {intern.streak > 0 && (
+                        <span className="text-orange-500 text-xs font-bold">🔥{intern.streak}</span>
                       )}
-                    </React.Fragment>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </GlassCard>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                    </div>
+                  </div>
+
+                  {/* Stats row */}
+                  <div className="flex gap-4 mt-3 pt-3 border-t border-gray-50 text-xs text-gray-500">
+                    <span>Avg: <strong className="text-indigo-600">{intern.avgScore}/10</strong></span>
+                    <span>Last: <strong className="text-gray-700">{intern.lastLogDate ? format(parseISO(intern.lastLogDate), 'MMM d') : 'Never'}</strong></span>
+                    <span>Logs: <strong className="text-gray-700">{intern.recentLogs.length}+</strong></span>
+                  </div>
+                </button>
+
+                {/* Expanded log details */}
+                {isExpanded && (
+                  <div className="mt-4 pt-4 border-t border-gray-100 space-y-3">
+                    <h4 className="text-xs font-black uppercase text-gray-400 tracking-widest">Recent Logs</h4>
+                    {intern.recentLogs.length === 0 ? (
+                      <p className="text-sm text-gray-400">No logs yet.</p>
+                    ) : (
+                      intern.recentLogs.map(log => (
+                        <div key={log.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
+                          {/* Log header */}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-800">
+                              {format(parseISO(log.log_date), 'MMM d, yyyy')}
+                            </span>
+                            <span className="text-xs text-gray-500">{log.hours_worked}h worked</span>
+                            <span className="text-xs text-indigo-600 font-bold">Score: {log.productivity_score}</span>
+                            <MoodBadge mood={log.mood} />
+                            {log.blockers?.trim() && (
+                              <span className="px-2 py-0.5 bg-red-50 text-red-600 rounded text-[10px] font-bold uppercase">Blocked</span>
+                            )}
+                          </div>
+
+                          {/* Tasks */}
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-1">Tasks</p>
+                            <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                              {log.tasks_completed || <span className="text-gray-400 italic">No description.</span>}
+                            </p>
+                          </div>
+
+                          {/* Blockers */}
+                          {log.blockers?.trim() && (
+                            <div className="bg-red-50 rounded-lg p-2.5 border border-red-100">
+                              <p className="text-[10px] font-black uppercase text-red-500 tracking-widest mb-1">Blockers</p>
+                              <p className="text-xs text-red-800 whitespace-pre-wrap">{log.blockers}</p>
+                            </div>
+                          )}
+
+                          {/* Admin feedback */}
+                          {log.admin_feedback && (
+                            <div className="bg-indigo-50 rounded-lg p-2.5 border border-indigo-100 flex gap-2">
+                              <MessageSquare size={14} className="text-indigo-600 flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="text-[10px] font-black uppercase text-indigo-600 tracking-widest mb-0.5">Admin Note</p>
+                                <p className="text-xs text-indigo-900 font-semibold whitespace-pre-wrap">{log.admin_feedback}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </GlassCard>
+            )
+          })
+        )}
+      </div>
     </div>
   )
 }

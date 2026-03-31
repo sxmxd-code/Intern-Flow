@@ -4,88 +4,66 @@ import { supabase } from '../lib/supabase'
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [role, setRole] = useState(null)
+  const [user, setUser]     = useState(null)
+  const [role, setRole]     = useState(null)
+  const [status, setStatus] = useState(null) // 'pending' | 'approved' | 'rejected'
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        fetchRole(session.user.id)
+        fetchProfile(session.user.id)
       } else {
         setLoading(false)
       }
     })
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setUser(session?.user ?? null)
-        if (session?.user) {
-          fetchRole(session.user.id)
-        } else {
-          setRole(null)
-          setLoading(false)
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        fetchProfile(session.user.id)
+      } else {
+        setRole(null)
+        setStatus(null)
+        setLoading(false)
       }
-    )
+    })
 
     return () => subscription.unsubscribe()
   }, [])
 
-  const fetchRole = async (userId) => {
+  const fetchProfile = async (userId) => {
     try {
       const { data, error } = await supabase
         .from('users')
-        .select('role, email')
+        .select('role, status, email')
         .eq('id', userId)
         .single()
-      
+
       if (error) throw error
-      
-      let currentRole = data?.role || 'intern'
-      
-      // HOTFIX: Auto-promote alexhales@gmail.com if they are stuck as an intern
-      if (data?.email === 'alexhales@gmail.com' && currentRole !== 'admin') {
-        const { error: updateError } = await supabase
-          .from('users')
-          .update({ role: 'admin' })
-          .eq('id', userId)
-          
-        if (!updateError) {
-          currentRole = 'admin';
-        }
-      }
-      
-      setRole(currentRole)
-    } catch (error) {
-      console.error('Error fetching role:', error)
-      setRole('intern') // Fallback
+
+      setRole(data?.role   || 'pending')
+      setStatus(data?.status || 'pending')
+    } catch (err) {
+      console.error('Error fetching profile:', err)
+      setRole('intern')
+      setStatus('pending')
     } finally {
       setLoading(false)
     }
   }
 
-  const signIn = async (email, password) => {
-    return supabase.auth.signInWithPassword({ email, password })
+  // Call this to manually re-check role/status (used by PendingApproval page)
+  const refreshProfile = () => {
+    if (user?.id) fetchProfile(user.id)
   }
 
-  const signOut = async () => {
-    return supabase.auth.signOut()
-  }
-
-  const value = {
-    user,
-    role,
-    loading,
-    signIn,
-    signOut
-  }
+  const signIn = (email, password) => supabase.auth.signInWithPassword({ email, password })
+  const signOut = () => supabase.auth.signOut()
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, role, status, loading, signIn, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   )
@@ -93,8 +71,6 @@ export function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
+  if (context === undefined) throw new Error('useAuth must be used within an AuthProvider')
   return context
 }

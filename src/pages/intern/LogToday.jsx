@@ -143,185 +143,162 @@ export default function LogToday() {
 
   if (existingLog && !isEditing) {
     return (
-      <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-12">
-        <PageHeader 
-          title="Log Today" 
-          description={format(new Date(), 'EEEE, MMMM d, yyyy')} 
-        />
+      <div className="max-w-2xl mx-auto space-y-5 animate-fade-in pb-10">
+        <PageHeader title="Log Today" description={format(new Date(), 'EEEE, MMMM d, yyyy')} />
         
-        <div className="bg-green-50 border border-green-200 text-green-800 px-6 py-4 rounded-2xl flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <span className="text-xl">✅</span>
-            <p className="font-semibold text-lg hover:underline">Already logged today</p>
+        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span>✅</span>
+            <p className="font-semibold text-sm">Already logged today</p>
           </div>
-          <button 
-            onClick={() => setIsEditing(true)}
-            className="px-5 py-2.5 bg-white text-green-700 font-medium rounded-xl hover:bg-green-100 transition-colors shadow-sm"
-          >
-            Edit Log
+          <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-white text-green-700 font-medium rounded-xl hover:bg-green-100 transition-colors text-sm flex-shrink-0">
+            Edit
           </button>
         </div>
 
-        <GlassCard className="space-y-6">
-           <div className="grid grid-cols-2 gap-6">
-             <div>
-               <p className="text-sm text-gray-500 font-medium">Project</p>
-               <p className="text-gray-900 font-semibold">{existingLog.projects?.name || 'Unassigned'}</p>
-             </div>
-             <div>
-               <p className="text-sm text-gray-500 font-medium">Score</p>
-               <p className="text-primary-700 font-semibold text-xl">{existingLog.productivity_score} / 10.0</p>
-             </div>
-           </div>
-           
-           <div>
-             <p className="text-sm text-gray-500 font-medium mb-1">Tasks Completed</p>
-             <div className="bg-gray-50 p-4 rounded-xl text-gray-800 whitespace-pre-wrap">
-               {existingLog.tasks_completed}
-             </div>
-           </div>
-
-           <div className="grid grid-cols-2 gap-6">
-             <div>
-               <p className="text-sm text-gray-500 font-medium mb-1">Hours Worked</p>
-               <p className="text-gray-900 font-semibold">{existingLog.hours_worked}h</p>
-             </div>
-             <div>
-               <p className="text-sm text-gray-500 font-medium mb-1">Mood</p>
-               <div className="flex items-center gap-2">
-                 <span className="text-2xl">{moodOptions.find(m => m.value === existingLog.mood)?.emoji}</span>
-                 <span className="font-medium text-gray-900 capitalize">{existingLog.mood}</span>
-               </div>
-             </div>
-           </div>
-
-           {existingLog.blockers && (
-             <div>
-               <p className="text-sm text-gray-500 font-medium mb-1">Blockers</p>
-               <div className="bg-red-50 text-red-800 p-4 rounded-xl whitespace-pre-wrap">
-                 {existingLog.blockers}
-               </div>
-             </div>
-           )}
+        <GlassCard className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Project</p>
+              <p className="text-gray-900 font-semibold text-sm">{existingLog.projects?.name || 'Unassigned'}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Score</p>
+              <p className="text-indigo-600 font-bold text-lg">{existingLog.productivity_score}/10</p>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1">Tasks Completed</p>
+            <div className="bg-gray-50 p-3 rounded-xl text-sm text-gray-800 whitespace-pre-wrap border border-gray-100">{existingLog.tasks_completed}</div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Hours Worked</p>
+              <p className="text-gray-900 font-semibold">{existingLog.hours_worked}h</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Mood</p>
+              <p className="font-medium text-gray-900 capitalize">{moodOptions.find(m => m.value === existingLog.mood)?.emoji} {existingLog.mood}</p>
+            </div>
+          </div>
+          {existingLog.blockers && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 mb-1">Blockers</p>
+              <div className="bg-red-50 text-red-800 p-3 rounded-xl text-sm whitespace-pre-wrap border border-red-100">{existingLog.blockers}</div>
+            </div>
+          )}
         </GlassCard>
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in pb-12">
-      <PageHeader 
-        title={isEditing ? "Edit Today's Log" : "Log Today"} 
-        description={format(new Date(), 'EEEE, MMMM d, yyyy')} 
+    <div className="max-w-2xl mx-auto space-y-5 animate-fade-in pb-10">
+      <PageHeader
+        title={isEditing ? "Edit Today's Log" : 'Log Today'}
+        description={format(new Date(), 'EEEE, MMMM d, yyyy')}
       />
 
-      <GlassCard>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
+      <GlassCard hoverLift={false}>
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Project */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Select Project</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Project</label>
             <select
               value={formData.project_id}
-              onChange={(e) => setFormData({ ...formData, project_id: e.target.value })}
-              className="w-full bg-white/50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all shadow-sm"
+              onChange={e => setFormData({ ...formData, project_id: e.target.value })}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-indigo-400 outline-none bg-white"
             >
-              <option value="">No Project Selected</option>
-              {projects.map((p) => (
-                <option key={p.project_id} value={p.project_id}>
-                  {p.projects?.name}
-                </option>
-              ))}
+              <option value="">No Project</option>
+              {projects.map(p => <option key={p.project_id} value={p.project_id}>{p.projects?.name}</option>)}
             </select>
           </div>
 
+          {/* Tasks */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Tasks Completed</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Tasks Completed *</label>
             <textarea
               required
-              rows={4}
+              rows={5}
               value={formData.tasks_completed}
-              onChange={(e) => setFormData({ ...formData, tasks_completed: e.target.value })}
-              className="w-full bg-white/50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all shadow-sm placeholder-gray-400"
-              placeholder="What did you accomplish today? Be specific."
+              onChange={e => setFormData({ ...formData, tasks_completed: e.target.value })}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-indigo-400 outline-none resize-none"
+              placeholder="What did you accomplish today?"
             />
           </div>
 
+          {/* Hours slider */}
           <div>
             <div className="flex justify-between items-center mb-2">
-               <label className="text-sm font-semibold text-gray-700">Hours Worked</label>
-               <span className="text-primary-600 font-bold bg-primary-50 px-3 py-1 rounded-full">{formData.hours_worked} hours</span>
+              <label className="text-xs font-bold text-gray-600 uppercase tracking-wider">Hours Worked</label>
+              <span className="text-indigo-600 font-bold text-sm bg-indigo-50 px-3 py-1 rounded-full">{formData.hours_worked}h</span>
             </div>
             <input
-              type="range"
-              min="0.5"
-              max="12"
-              step="0.5"
+              type="range" min="0.5" max="12" step="0.5"
               value={formData.hours_worked}
-              onChange={(e) => setFormData({ ...formData, hours_worked: parseFloat(e.target.value) })}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+              onChange={e => setFormData({ ...formData, hours_worked: parseFloat(e.target.value) })}
+              className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-indigo-600"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-2">
-              <span>0.5h</span>
-              <span>12h</span>
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>0.5h</span><span>12h</span>
             </div>
           </div>
 
+          {/* Blockers */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Blockers (Optional)</label>
+            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Blockers <span className="font-normal normal-case text-gray-400">(optional)</span></label>
             <textarea
               rows={2}
               value={formData.blockers}
-              onChange={(e) => setFormData({ ...formData, blockers: e.target.value })}
-              className="w-full bg-white/50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:ring-2 focus:ring-red-300 focus:border-transparent outline-none transition-all shadow-sm placeholder-gray-400"
-              placeholder="Any issues blocking your progress?"
+              onChange={e => setFormData({ ...formData, blockers: e.target.value })}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-900 focus:ring-2 focus:ring-red-300 outline-none resize-none"
+              placeholder="Any blockers or issues?"
             />
           </div>
 
+          {/* Mood */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">How was your mood today?</label>
-            <div className="grid grid-cols-4 gap-3">
+            <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">Today's Mood</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {moodOptions.map(({ value, emoji, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setFormData({ ...formData, mood: value })}
-                  className={`flex flex-col items-center justify-center py-4 rounded-2xl border transition-all duration-200 ${
-                    formData.mood === value 
-                      ? 'bg-primary-50 border-primary-500 shadow-md ring-2 ring-primary-200 scale-105' 
-                      : 'bg-white/50 border-gray-200 hover:bg-gray-50 hover:scale-105'
+                  className={`flex flex-col items-center justify-center py-3 rounded-xl border-2 transition-all ${
+                    formData.mood === value
+                      ? 'border-indigo-400 bg-indigo-50'
+                      : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                   }`}
                 >
-                  <span className="text-3xl mb-2">{emoji}</span>
-                  <span className={`text-xs font-semibold ${formData.mood === value ? 'text-primary-700' : 'text-gray-500'}`}>
-                    {label}
-                  </span>
+                  <span className="text-2xl mb-1">{emoji}</span>
+                  <span className={`text-xs font-semibold ${formData.mood === value ? 'text-indigo-700' : 'text-gray-500'}`}>{label}</span>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="bg-primary-50/50 p-6 rounded-2xl border border-primary-100 backdrop-blur-sm shadow-sm mt-8">
+          {/* Score preview */}
+          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
             <ScoreBar score={previewScore} />
-            <p className="text-xs text-gray-500 mt-3 text-center">Score is calculated based on hours worked and your mood.</p>
+            <p className="text-[10px] text-gray-400 mt-2 text-center">Score based on hours worked and mood</p>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          {/* Actions */}
+          <div className="flex gap-3 pt-2">
             {isEditing && (
-              <button
-                type="button"
-                onClick={() => setIsEditing(false)}
-                className="px-6 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors"
-                disabled={submitting}
-              >
+              <button type="button" onClick={() => setIsEditing(false)} disabled={submitting}
+                className="flex-1 py-3 font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-sm">
                 Cancel
               </button>
             )}
             <button
               type="submit"
               disabled={submitting}
-              className="px-8 py-3 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 hover:shadow-lg hover:-translate-y-0.5 focus:ring-4 focus:ring-primary-200 transition-all disabled:opacity-70 flex-1 md:flex-none"
+              className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-60 text-sm"
             >
-              {submitting ? 'Submitting...' : isEditing ? 'Update Log →' : 'Submit Log →'}
+              {submitting ? 'Saving...' : isEditing ? 'Update Log' : 'Submit Log'}
             </button>
           </div>
         </form>
