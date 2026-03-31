@@ -92,8 +92,8 @@ export default function Dashboard() {
           label="Total Logs"
           value={stats.totalLogs}
           sublabel="All time"
-          iconColor="text-indigo-600"
-          iconBg="bg-indigo-50"
+          iconColor="text-gray-900"
+          iconBg="bg-gray-100"
         />
         <StatCard
           icon={TrendingUp}
@@ -125,18 +125,18 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link
           to="/log"
-          className="flex items-center justify-between p-4 bg-white rounded-2xl border border-indigo-100 hover:border-indigo-300 hover:shadow-sm transition-all group"
+          className="flex items-center justify-between p-4 bg-white rounded-2xl border border-gray-200 hover:border-gray-400 hover:shadow-sm transition-all group"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-              <Plus size={20} className="text-indigo-600" />
+            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+              <Plus size={20} className="text-gray-900" />
             </div>
             <div>
               <p className="font-bold text-gray-900 text-sm">Post Update</p>
               <p className="text-xs text-gray-400">Log your work for today</p>
             </div>
           </div>
-          <ChevronRight size={18} className="text-gray-300 group-hover:text-indigo-500 transition-colors" />
+          <ChevronRight size={18} className="text-gray-300 group-hover:text-gray-700 transition-colors" />
         </Link>
 
         <Link

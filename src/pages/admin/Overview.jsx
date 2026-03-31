@@ -364,7 +364,7 @@ export default function AdminOverview() {
         <div className="flex flex-col gap-3 mb-4">
           {/* Title row */}
           <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-indigo-500 flex-shrink-0" /> Log Reports
+            <FileText className="w-5 h-5 text-gray-700 flex-shrink-0" /> Log Reports
           </h3>
           {/* Filter pills — wrap naturally on mobile */}
           <div className="flex flex-wrap items-center gap-1.5">
@@ -375,14 +375,14 @@ export default function AdminOverview() {
                   type="button"
                   onClick={() => { setDateFilter(f); setCustomDate('') }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors ${
-                    dateFilter === f ? 'bg-indigo-50 text-indigo-700' : 'text-gray-400 hover:text-gray-700'
+                    dateFilter === f ? 'bg-gray-900 text-white' : 'text-gray-400 hover:text-gray-700'
                   }`}
                 >{f}</button>
               ))}
             </div>
-            {/* Date picker — stands alone on its own pill */}
+            {/* Date picker */}
             <div className={`flex items-center px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer transition-colors ${
-              dateFilter === 'custom' ? 'border-indigo-300 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-400'
+              dateFilter === 'custom' ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-200 bg-white text-gray-400'
             }`}>
               <input
                 type="date"

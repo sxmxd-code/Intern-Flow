@@ -133,7 +133,7 @@ export default function Signup() {
           {/* Header */}
           <div className="text-center mb-8">
             <h2 className="text-3xl font-black text-gray-900 mb-1">
-              Join Intern<span className="text-indigo-600">~</span>Flow
+              Join Intern~Flow
             </h2>
             <p className="text-gray-400 text-sm">Request access — admin will approve your role</p>
           </div>
@@ -149,7 +149,8 @@ export default function Signup() {
                   required
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  className="pl-10 w-full rounded-xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                  className={`pl-10 w-full rounded-xl border p-3 text-sm focus:ring-2 focus:ring-gray-800 outline-none
+                  placeholder-gray-400`}
                   placeholder="John Doe"
                 />
               </div>
@@ -165,7 +166,8 @@ export default function Signup() {
                   required
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="pl-10 w-full rounded-xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                  className={`pl-10 w-full rounded-xl border p-3 text-sm focus:ring-2 focus:ring-gray-800 outline-none
+                  placeholder-gray-400`}
                   placeholder="name@company.com"
                 />
               </div>
@@ -182,7 +184,8 @@ export default function Signup() {
                   minLength={6}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="pl-10 w-full rounded-xl border border-gray-200 p-3 text-sm focus:ring-2 focus:ring-indigo-400 outline-none"
+                  className={`pl-10 w-full rounded-xl border p-3 text-sm focus:ring-2 focus:ring-gray-800 outline-none
+                  placeholder-gray-400`}
                   placeholder="••••••••"
                 />
               </div>
@@ -198,7 +201,7 @@ export default function Signup() {
                   required
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  className={`pl-10 w-full rounded-xl border p-3 text-sm focus:ring-2 focus:ring-indigo-400 outline-none ${
+                  className={`pl-10 w-full rounded-xl border p-3 text-sm focus:ring-2 focus:ring-gray-800 outline-none ${
                     error ? 'border-red-300' : 'border-gray-200'
                   }`}
                   placeholder="••••••••"
@@ -220,13 +223,13 @@ export default function Signup() {
                     onClick={() => setSelectedRole(role.value)}
                     className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border-2 transition-all text-center ${
                       selectedRole === role.value
-                        ? 'border-indigo-400 bg-indigo-50'
-                        : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                        ? 'border-gray-900 bg-gray-900'
+                        : 'border-gray-100 bg-gray-50 hover:border-gray-300'
                     }`}
                   >
                     <span className="text-xl">{role.icon}</span>
                     <span className={`text-[11px] font-bold leading-tight ${
-                      selectedRole === role.value ? 'text-indigo-700' : 'text-gray-600'
+                      selectedRole === role.value ? 'text-white' : 'text-gray-600'
                     }`}>
                       {role.label}
                     </span>
@@ -241,7 +244,7 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm hover:bg-indigo-700 transition-colors disabled:opacity-60 mt-2"
+              className="w-full flex items-center justify-center py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors disabled:opacity-60 mt-2"
             >
               {loading ? <Loader2 className="animate-spin h-5 w-5" /> : (
                 <>Request Access <ArrowRight className="ml-2 h-4 w-4" /></>
@@ -251,7 +254,7 @@ export default function Signup() {
 
           <div className="mt-5 text-center text-sm text-gray-500">
             Already have an account?{' '}
-            <Link to="/login" className="text-indigo-600 font-bold hover:underline">Log in</Link>
+            <Link to="/login" className="text-gray-900 font-bold hover:underline">Log in</Link>
           </div>
         </div>
       </div>

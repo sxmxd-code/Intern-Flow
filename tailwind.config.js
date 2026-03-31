@@ -7,28 +7,29 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        heading: ['"Plus Jakarta Sans"', 'sans-serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        heading: ['"Space Grotesk"', 'sans-serif'],
+        body:    ['"DM Sans"', 'sans-serif'],
       },
       colors: {
+        // Brand: B&W — Arova palette
         primary: {
-          50:  '#eef2ff',
-          100: '#e0e7ff',
-          200: '#c7d2fe',
-          300: '#a5b4fc',
-          400: '#818cf8',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-          800: '#3730a3',
-          900: '#312e81',
-          950: '#1e1b4b',
+          50:  '#f9fafb',   // near-white
+          100: '#f3f4f6',   // light gray
+          200: '#e5e7eb',   // border gray
+          300: '#d1d5db',
+          400: '#9ca3af',   // muted
+          500: '#6b7280',   // mid gray
+          600: '#1f2937',   // dark gray (replaces indigo-600)
+          700: '#111827',   // near-black
+          800: '#0a0a0a',
+          900: '#000000',   // pure black
+          950: '#000000',
         }
       },
       animation: {
-        'fade-in':      'fadeIn 0.25s ease-out both',
-        'slide-up':     'slideUp 0.2s ease-out both',
-        'slide-in-left':'slideInLeft 0.25s ease-out both',
+        'fade-in':       'fadeIn 0.25s ease-out both',
+        'slide-up':      'slideUp 0.2s ease-out both',
+        'slide-in-left': 'slideInLeft 0.25s ease-out both',
       },
       keyframes: {
         fadeIn: {

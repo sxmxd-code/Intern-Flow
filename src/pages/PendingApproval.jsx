@@ -9,16 +9,11 @@ export default function PendingApproval() {
   const navigate = useNavigate()
   const intervalRef = useRef(null)
 
-  // Poll DB every 4 seconds — redirect as soon as status flips to 'approved'
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      refreshProfile()
-    }, 4000)
-
+    intervalRef.current = setInterval(() => { refreshProfile() }, 4000)
     return () => clearInterval(intervalRef.current)
   }, [])
 
-  // When status/role updates to approved → navigate to correct dashboard
   useEffect(() => {
     if (status === 'approved' && role && role !== 'pending') {
       clearInterval(intervalRef.current)
@@ -32,7 +27,7 @@ export default function PendingApproval() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm animate-fade-in text-center">
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-10">
+        <div className="bg-white rounded-2xl border border-gray-200 p-10">
           <div className="mb-8 flex justify-center">
             <Logo size="sm" />
           </div>
@@ -49,17 +44,14 @@ export default function PendingApproval() {
             </>
           ) : (
             <>
-              <div className="w-16 h-16 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-5 relative">
-                <Clock className="w-8 h-8 text-amber-500" />
-                {/* Subtle pulse ring */}
-                <span className="absolute inset-0 rounded-2xl border-2 border-amber-300 animate-ping opacity-30" />
+              <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-5 relative">
+                <Clock className="w-8 h-8 text-gray-700" />
+                <span className="absolute inset-0 rounded-2xl border-2 border-gray-400 animate-ping opacity-20" />
               </div>
               <h1 className="text-xl font-black text-gray-900 mb-2">Awaiting Approval</h1>
               <p className="text-sm text-gray-500 leading-relaxed mb-5">
                 Your account is pending admin review. You'll get access as soon as your role is approved.
               </p>
-
-              {/* Live checking indicator */}
               <div className="flex items-center justify-center gap-2 text-xs text-gray-400 mb-5">
                 <Loader2 size={12} className="animate-spin" />
                 Checking automatically…

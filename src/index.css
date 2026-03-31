@@ -19,7 +19,7 @@
   body,
   #root {
     font-family: 'DM Sans', sans-serif;
-    color: #111827;
+    color: #111111;
     background-color: #f9fafb;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -36,7 +36,7 @@
   h4,
   h5,
   h6 {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Space Grotesk', sans-serif;
   }
 
   /* Smooth scrollbar for webkit */
