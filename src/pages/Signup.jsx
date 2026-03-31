@@ -120,11 +120,14 @@ export default function Signup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 py-12">
-      <div className="absolute top-6 left-6">
+    <div className="min-h-screen flex flex-col">
+      {/* Logo bar — always above the card in document flow */}
+      <div className="px-6 py-5 flex-shrink-0">
         <Link to="/"><Logo size="sm" /></Link>
       </div>
 
+      {/* Card — centered in remaining space */}
+      <div className="flex-1 flex items-center justify-center px-4 pb-10">
       <div className="w-full max-w-md animate-fade-in">
         <div className="bg-white rounded-3xl border border-gray-100 shadow-xl p-8">
           {/* Header */}
@@ -252,6 +255,7 @@ export default function Signup() {
           </div>
         </div>
       </div>
+      </div>  {/* end flex-1 centering wrapper */}
     </div>
   )
 }
