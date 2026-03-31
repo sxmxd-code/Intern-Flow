@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
-import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 import Logo from '../components/ui/Logo'
 
 export default function Login() {
@@ -12,8 +12,14 @@ export default function Login() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
+  const [noProfile, setNoProfile] = useState(false) // auth exists but no users row
 
   useEffect(() => {
+    if (!user && status === 'no_profile') {
+      // User was signed out by AuthContext — no users row found
+      setNoProfile(true)
+      return
+    }
     if (!user || !role || !status) return
     if (status === 'pending' || status === 'rejected') navigate('/pending', { replace: true })
     else if (['admin', 'staff', 'dept_head'].includes(role)) navigate('/admin', { replace: true })
@@ -22,6 +28,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setNoProfile(false)
     setLoading(true)
     try {
       const { error } = await signIn(email, password)
@@ -94,6 +101,21 @@ export default function Login() {
                 }
               </button>
             </form>
+
+            {/* No profile — show signup prompt */}
+            {noProfile && (
+              <div className="mt-4 flex items-start gap-2.5 p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-bold text-amber-800">No account found</p>
+                  <p className="text-amber-700 text-xs mt-0.5">
+                    This email isn't registered yet.{' '}
+                    <Link to="/signup" className="font-bold underline">Sign up here</Link>{' '}
+                    to request access.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 text-center text-sm text-gray-500">
               Don't have an account?{' '}

@@ -41,9 +41,17 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single()
 
-      if (error) throw error
+      if (error) {
+        // PGRST116 = no row found — auth account exists but never went through signup
+        if (error.code === 'PGRST116') {
+          setRole(null)
+          setStatus('no_profile')   // triggers Login to show "Please sign up first"
+          await supabase.auth.signOut()
+          return
+        }
+        throw error
+      }
 
-      // If status is null/empty (column might not be populated), treat as pending
       const fetchedStatus = data?.status || 'pending'
       const fetchedRole   = data?.role   || 'intern'
 
@@ -51,7 +59,7 @@ export function AuthProvider({ children }) {
       setStatus(fetchedStatus)
     } catch (err) {
       console.error('Error fetching profile:', err)
-      setRole('intern')
+      setRole(null)
       setStatus('pending')
     } finally {
       setLoading(false)

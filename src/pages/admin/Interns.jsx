@@ -65,31 +65,43 @@ export default function AdminInterns() {
     }
   }
 
-  // ── Delete handler ──
+  // ── Hard delete — wipes all logs then the user row permanently ──
+  // Requires these DELETE RLS policies in Supabase:
+  //   CREATE POLICY "Admins can delete users" ON users FOR DELETE USING (get_my_role() IN ('admin','dept_head'));
+  //   CREATE POLICY "Admins can delete logs"  ON daily_logs FOR DELETE USING (get_my_role() IN ('admin','dept_head'));
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
     try {
-      // 1. Delete their logs
+      // Step 1 — delete all their logs
       const { error: logsErr } = await supabase
         .from('daily_logs')
         .delete()
         .eq('intern_id', deleteTarget.id)
       if (logsErr) throw logsErr
 
-      // 2. Delete user record
-      const { error: userErr } = await supabase
+      // Step 2 — delete the user row; .select() lets us detect silent RLS blocks
+      const { data: deleted, error: userErr } = await supabase
         .from('users')
         .delete()
         .eq('id', deleteTarget.id)
+        .select()
       if (userErr) throw userErr
 
-      toast.success(`${deleteTarget.full_name}'s account deleted.`)
+      if (!deleted || deleted.length === 0) {
+        throw new Error(
+          'Delete blocked by database policy.\n' +
+          'Run this in Supabase SQL Editor:\n' +
+          'CREATE POLICY "Admins can delete users" ON users FOR DELETE USING (get_my_role() IN (\'admin\',\'dept_head\'));'
+        )
+      }
+
+      toast.success(`${deleteTarget.full_name} has been permanently removed.`)
       setInterns(prev => prev.filter(i => i.id !== deleteTarget.id))
       setDeleteTarget(null)
     } catch (err) {
       console.error(err)
-      toast.error(err.message || 'Delete failed. Check RLS policies.')
+      toast.error(err.message || 'Delete failed.')
     } finally {
       setDeleting(false)
     }
