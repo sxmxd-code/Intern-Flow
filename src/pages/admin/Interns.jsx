@@ -65,10 +65,7 @@ export default function AdminInterns() {
     }
   }
 
-  // ── Hard delete — wipes all logs then the user row permanently ──
-  // Requires these DELETE RLS policies in Supabase:
-  //   CREATE POLICY "Admins can delete users" ON users FOR DELETE USING (get_my_role() IN ('admin','dept_head'));
-  //   CREATE POLICY "Admins can delete logs"  ON daily_logs FOR DELETE USING (get_my_role() IN ('admin','dept_head'));
+  // ── Hard delete — wipes logs, users row, AND auth account ──
   const handleDelete = async () => {
     if (!deleteTarget) return
     setDeleting(true)
@@ -80,7 +77,7 @@ export default function AdminInterns() {
         .eq('intern_id', deleteTarget.id)
       if (logsErr) throw logsErr
 
-      // Step 2 — delete the user row; .select() lets us detect silent RLS blocks
+      // Step 2 — delete the users row (.select() catches silent RLS blocks)
       const { data: deleted, error: userErr } = await supabase
         .from('users')
         .delete()
@@ -90,13 +87,22 @@ export default function AdminInterns() {
 
       if (!deleted || deleted.length === 0) {
         throw new Error(
-          'Delete blocked by database policy.\n' +
-          'Run this in Supabase SQL Editor:\n' +
-          'CREATE POLICY "Admins can delete users" ON users FOR DELETE USING (get_my_role() IN (\'admin\',\'dept_head\'));'
+          'Delete blocked by database policy. Run DELETE RLS policies in Supabase SQL Editor.'
         )
       }
 
-      toast.success(`${deleteTarget.full_name} has been permanently removed.`)
+      // Step 3 — delete from auth.users via Edge Function (service role key)
+      const { error: fnErr } = await supabase.functions.invoke('delete-user', {
+        body: { userId: deleteTarget.id },
+      })
+      if (fnErr) {
+        // DB is already clean — just warn, don't block success
+        console.warn('Auth user deletion failed (Edge Function):', fnErr.message)
+        toast.success(`${deleteTarget.full_name} removed. (Auth entry may need manual cleanup)`)
+      } else {
+        toast.success(`${deleteTarget.full_name} permanently deleted.`)
+      }
+
       setInterns(prev => prev.filter(i => i.id !== deleteTarget.id))
       setDeleteTarget(null)
     } catch (err) {
